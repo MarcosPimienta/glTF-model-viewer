@@ -1,0 +1,84 @@
+/* =============================================================================
+   Viewer.css — 3D Canvas Area
+   BEM: .viewer, .viewer__*, .viewer__*--modifier
+   ============================================================================= */
+
+.viewer {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Canvas — fills the entire viewer area
+   --------------------------------------------------------------------------- */
+.viewer__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none; /* Remove focus ring on canvas */
+}
+
+/* ---------------------------------------------------------------------------
+   Loading overlay — centered progress feedback
+   --------------------------------------------------------------------------- */
+.viewer__loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background-color: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.viewer__loading-overlay--hidden {
+  display: none;
+}
+
+.viewer__loading-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+/* ---------------------------------------------------------------------------
+   Progress bar
+   --------------------------------------------------------------------------- */
+.viewer__progress-track {
+  width: 240px;
+  height: 4px;
+  background-color: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.viewer__progress-bar {
+  height: 100%;
+  background-color: var(--accent);
+  border-radius: 2px;
+  transition: width 80ms linear;
+}
+
+/* ---------------------------------------------------------------------------
+   Drag-over highlight — shown when user drags a file onto canvas
+   --------------------------------------------------------------------------- */
+.viewer--drag-over::after {
+  content: "Drop .glTF / .glb here";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--accent);
+  border: 2px dashed var(--accent);
+  background-color: rgba(74, 158, 255, 0.08);
+  pointer-events: none;
+  z-index: 20;
+}
