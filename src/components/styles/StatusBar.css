@@ -1,0 +1,82 @@
+/* =============================================================================
+   StatusBar.css — Bottom Performance Stats Bar
+   BEM: .status-bar, .status-bar__*, .status-bar__*--modifier
+   ============================================================================= */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: var(--statusbar-height);
+  padding: 0 12px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Individual stat — a label:value pair
+   --------------------------------------------------------------------------- */
+.status-bar__stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.status-bar__stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.status-bar__stat-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+/* Highlight variants */
+.status-bar__stat-value--good {
+  color: var(--success);
+}
+
+.status-bar__stat-value--warn {
+  color: #ffb84d;
+}
+
+.status-bar__stat-value--danger {
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------------------------------
+   Separator — pipe character between stats
+   --------------------------------------------------------------------------- */
+.status-bar__separator {
+  width: 1px;
+  height: 14px;
+  background-color: var(--border);
+  margin: 0 10px;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Spacer
+   --------------------------------------------------------------------------- */
+.status-bar__spacer {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   File name — rightmost item
+   --------------------------------------------------------------------------- */
+.status-bar__filename {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  white-space: nowrap;
+}
