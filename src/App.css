@@ -1,0 +1,97 @@
+/* =============================================================================
+   App.css — Global Design Tokens & Reset
+   All CSS custom properties live here. Components inherit via var(--*)
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   Design Tokens
+   --------------------------------------------------------------------------- */
+:root {
+  /* Color palette */
+  --bg-primary:   #1e1e1e;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary:  #3c3c3c;
+
+  --text-primary:   #e0e0e0;
+  --text-secondary: #a0a0a0;
+
+  --accent:       #4a9eff;
+  --accent-hover: #5ab0ff;
+  --danger:       #ff4d4d;
+  --success:      #4dff88;
+
+  --border: #444444;
+
+  /* Layout dimensions */
+  --panel-width-left:   220px;
+  --panel-width-right:  260px;
+  --toolbar-height:     48px;
+  --statusbar-height:   32px;
+
+  /* Typography */
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-size-sm: 11px;
+  --font-size-md: 13px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+}
+
+/* ---------------------------------------------------------------------------
+   Global Reset
+   --------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden; /* The viewport is the app — no page scroll */
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------------------
+   Root Container — full viewport, flex column
+   --------------------------------------------------------------------------- */
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100dvw;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Shared scrollbar styling (used by panels)
+   --------------------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
