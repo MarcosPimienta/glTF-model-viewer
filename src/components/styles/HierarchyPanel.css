@@ -1,0 +1,165 @@
+/* =============================================================================
+   HierarchyPanel.css — Left Scene Graph Panel
+   BEM: .hierarchy-panel, .hierarchy-panel__*, .hierarchy-panel__*--modifier
+   ============================================================================= */
+
+.hierarchy-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width-left);
+  flex-shrink: 0;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Header
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 10px;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.hierarchy-panel__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollable tree body
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Empty state
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__empty {
+  padding: 16px 12px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Tree nodes
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding-right: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  margin: 1px 4px;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hierarchy-panel__node:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.hierarchy-panel__node--selected {
+  background-color: rgba(74, 158, 255, 0.15);
+  border-color: var(--accent);
+}
+
+.hierarchy-panel__node--selected:hover {
+  background-color: rgba(74, 158, 255, 0.22);
+}
+
+/* ---------------------------------------------------------------------------
+   Expand / collapse caret
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  transition: transform var(--transition-fast);
+}
+
+.hierarchy-panel__caret--expanded {
+  transform: rotate(90deg);
+}
+
+.hierarchy-panel__caret--leaf {
+  visibility: hidden; /* keep spacing, hide arrow for leaf nodes */
+}
+
+/* ---------------------------------------------------------------------------
+   Node icon (mesh / light / camera / transform)
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__icon {
+  font-size: 12px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   Node label
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__label {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------------------
+   Visibility eye toggle button
+   --------------------------------------------------------------------------- */
+.hierarchy-panel__eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.hierarchy-panel__node:hover .hierarchy-panel__eye {
+  opacity: 1;
+}
+
+.hierarchy-panel__eye:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+.hierarchy-panel__eye--hidden {
+  opacity: 1;
+  color: var(--danger);
+}
