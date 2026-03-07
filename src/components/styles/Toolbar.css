@@ -1,0 +1,105 @@
+/* =============================================================================
+   Toolbar.css — Top Action Bar
+   BEM: .toolbar, .toolbar__*, .toolbar__*--modifier
+   ============================================================================= */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--toolbar-height);
+  padding: 0 12px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------------------- */
+.toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.toolbar__button:hover {
+  background-color: #4a4a4a;
+  border-color: var(--accent);
+}
+
+.toolbar__button:active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.toolbar__button--active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.toolbar__button--active:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.toolbar__button--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.toolbar__button--danger:hover {
+  background-color: var(--danger);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------------
+   Separator — vertical divider between button groups
+   --------------------------------------------------------------------------- */
+.toolbar__separator {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Group label — small text above a cluster of buttons (optional)
+   --------------------------------------------------------------------------- */
+.toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar__group-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Spacer — pushes items to the right end of the toolbar
+   --------------------------------------------------------------------------- */
+.toolbar__spacer {
+  flex: 1;
+}
