@@ -76,6 +76,16 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Main content row — fills all vertical space between toolbar and statusbar
+   --------------------------------------------------------------------------- */
+.app__content {
+  display: flex;
+  flex: 1;
+  overflow: hidden; /* panels handle their own scroll */
+  min-height: 0;    /* required: lets flex children shrink below natural size */
+}
+
+/* ---------------------------------------------------------------------------
    Shared scrollbar styling (used by panels)
    --------------------------------------------------------------------------- */
 ::-webkit-scrollbar {
