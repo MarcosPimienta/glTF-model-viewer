@@ -1,3 +1,5 @@
+import { useState, useCallback } from "react";
+import type { Scene } from "@babylonjs/core";
 import Toolbar from "./components/Toolbar";
 import Viewer from "./components/Viewer";
 import HierarchyPanel from "./components/HierarchyPanel";
@@ -17,6 +19,17 @@ import StatusBar from "./components/StatusBar";
 */
 
 export default function App() {
+  // The Babylon.js Scene is stored here so ALL components can share it.
+  // ELI5: This is the "town square" — once the scene is ready, everyone
+  // in the app (toolbar, panels, status bar) can come here to get it.
+  const [scene, setScene] = useState<Scene | null>(null);
+
+  // useCallback keeps this function stable across re-renders,
+  // so Viewer doesn't fire onSceneReady on every render.
+  const handleSceneReady = useCallback((readyScene: Scene) => {
+    setScene(readyScene);
+  }, []);
+
   return (
     <>
       {/* Top toolbar — fixed height */}
@@ -25,11 +38,12 @@ export default function App() {
       {/* Main content row — fills all remaining vertical space */}
       <div className="app__content">
         <HierarchyPanel />
-        <Viewer />
+        <Viewer onSceneReady={handleSceneReady} />
         <PropertiesPanel />
       </div>
 
       {/* Bottom status bar — fixed height */}
+      {/* scene prop will be connected in Phase 4 */}
       <StatusBar />
     </>
   );

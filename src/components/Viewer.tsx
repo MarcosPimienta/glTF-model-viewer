@@ -1,12 +1,48 @@
+import { useRef, useEffect } from "react";
+import type { Scene } from "@babylonjs/core";
+import { useBabylonEngine } from "../hooks/useBabylonEngine";
 import "./styles/Viewer.css";
 
-export default function Viewer() {
+interface ViewerProps {
+  /**
+   * Called once when the Babylon.js Scene is ready.
+   * App.tsx stores this scene and passes it to other components
+   * (HierarchyPanel, StatusBar, etc.) in later phases.
+   *
+   * ELI5: Like shouting "kitchen is open!" so every waiter knows
+   * they can start taking orders.
+   */
+  onSceneReady?: (scene: Scene) => void;
+}
+
+export default function Viewer({ onSceneReady }: ViewerProps) {
+  // canvasRef is our direct line to the <canvas> DOM element.
+  // Think of it as a sticky note with the canvas's address written on it.
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Hand the canvas to the engine hook — it creates Engine + Scene
+  // and starts the render loop automatically.
+  const { scene } = useBabylonEngine(canvasRef);
+
+  // When the scene first becomes available, notify the parent (App.tsx).
+  // useEffect only fires when `scene` changes (null → Scene object).
+  useEffect(() => {
+    if (scene && onSceneReady) {
+      onSceneReady(scene);
+    }
+  }, [scene, onSceneReady]);
+
   return (
     <div className="viewer">
-      {/* Babylon.js canvas — engine will be attached here in Phase 2 */}
-      <canvas className="viewer__canvas" />
+      {/* The canvas is what Babylon.js actually draws on.
+          tabIndex={0} makes it focusable so keyboard shortcuts work. */}
+      <canvas
+        ref={canvasRef}
+        className="viewer__canvas"
+        tabIndex={0}
+      />
 
-      {/* Loading overlay — hidden by default, shown during model load */}
+      {/* Loading overlay — hidden by default, activated in Phase 3 */}
       <div className="viewer__loading-overlay viewer__loading-overlay--hidden">
         <span className="viewer__loading-label">Loading model…</span>
         <div className="viewer__progress-track">
