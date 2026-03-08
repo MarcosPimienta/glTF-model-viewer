@@ -74,7 +74,10 @@ export default function App() {
           selectedNodeId={selectedNodeId}
           onSelectNode={setSelectedNodeId}
         />
-        <PropertiesPanel />
+        <PropertiesPanel 
+          scene={scene}
+          selectedNodeId={selectedNodeId}
+        />
       </div>
 
       {/* Bottom status bar — fixed height */}
