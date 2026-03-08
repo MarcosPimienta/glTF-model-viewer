@@ -14,9 +14,15 @@ interface ViewerProps {
    * they can start taking orders.
    */
   onSceneReady?: (scene: Scene) => void;
+
+  /**
+   * Called when a file is dropped into the Viewer.
+   * Allows App.tsx to track the filename.
+   */
+  onFileDrop?: (file: File) => void;
 }
 
-export default function Viewer({ onSceneReady }: ViewerProps) {
+export default function Viewer({ onSceneReady, onFileDrop }: ViewerProps) {
   // canvasRef is our direct line to the <canvas> DOM element.
   // Think of it as a sticky note with the canvas's address written on it.
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -45,7 +51,11 @@ export default function Viewer({ onSceneReady }: ViewerProps) {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      loadModel(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      loadModel(file);
+      if (onFileDrop) {
+        onFileDrop(file);
+      }
     }
   };
 

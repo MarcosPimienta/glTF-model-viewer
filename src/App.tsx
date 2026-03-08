@@ -27,6 +27,9 @@ export default function App() {
   // in the app (toolbar, panels, status bar) can come here to get it.
   const [scene, setScene] = useState<Scene | null>(null);
 
+  // Tiny memory (state) to remember the name of the file we loaded
+  const [activeModelName, setActiveModelName] = useState<string | null>(null);
+
   // Initialize our model loader hook at the app level too, 
   // so the toolbar can use the same loader logic as the Viewer
   const { loadModel } = useModelLoader(scene);
@@ -37,8 +40,10 @@ export default function App() {
     setScene(readyScene);
   }, []);
 
-  // Expose loadModel to Toolbar
+  // Expose loadModel to Toolbar and Viewer drops
+  // We wrap it to also save the filename when a load starts
   const handleLoadFile = useCallback((file: File) => {
+    setActiveModelName(file.name);
     loadModel(file);
   }, [loadModel]);
 
@@ -51,13 +56,15 @@ export default function App() {
       <div className="app__content">
         <HierarchyPanel />
         {/* Viewer also handles its own drag-and-drop loading */}
-        <Viewer onSceneReady={handleSceneReady} />
+        {/* We pass handleLoadFile so dropping in the viewer also updates the App filename state */}
+        <Viewer onSceneReady={handleSceneReady} onFileDrop={handleLoadFile} />
         <PropertiesPanel />
       </div>
 
       {/* Bottom status bar — fixed height */}
-      {/* scene prop will be connected in Phase 4 */}
-      <StatusBar />
+      {/* Handing the "walkie-talkie" to the Status Bar so it can talk to the 3D world */}
+      {/* And passing it the active model name like a name tag */}
+      <StatusBar scene={scene} filename={activeModelName} />
     </>
   );
 }
