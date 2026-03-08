@@ -4,7 +4,7 @@ import "@babylonjs/loaders"; // registers GLTF/GLB loaders
 
 // We need to import the IFC loader plugin side-effect
 // Note: In Babylon 7, the IFC loader relies on web-ifc being available.
-import "web-ifc-babylon";
+import "web-ifc-babylon/loaders/IFC";
 
 // Re-use our LoadingState interface
 import type { LoadingState } from "../types";

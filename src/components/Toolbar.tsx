@@ -1,11 +1,47 @@
+import { useRef } from "react";
 import "./styles/Toolbar.css";
 
-export default function Toolbar() {
+interface ToolbarProps {
+  onLoadFile?: (file: File) => void;
+}
+
+export default function Toolbar({ onLoadFile }: ToolbarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadClick = () => {
+    // Trigger the hidden file input
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && onLoadFile) {
+      onLoadFile(file);
+    }
+    // Reset input so the same file can be selected again if needed
+    if (event.target) {
+        event.target.value = '';
+    }
+  };
+
   return (
     <header className="toolbar">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        accept=".gltf,.glb,.ifc,.rvt"
+        onChange={handleFileChange}
+      />
+
       {/* File actions */}
       <div className="toolbar__group">
-        <button className="toolbar__button" title="Load a .gltf or .glb file">
+        <button 
+          className="toolbar__button" 
+          title="Load a .gltf or .glb file"
+          onClick={handleLoadClick}
+        >
           📂 Load glTF
         </button>
         <button className="toolbar__button" title="Load built-in demo scene">
