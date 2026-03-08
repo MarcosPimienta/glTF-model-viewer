@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import type { Scene, Node, AbstractMesh } from "@babylonjs/core";
+import type { Scene, Node } from "@babylonjs/core";
 import "./styles/HierarchyPanel.css";
 
 interface HierarchyPanelProps {
@@ -210,8 +210,59 @@ export default function HierarchyPanel({ scene, isLoading }: HierarchyPanelProps
     setVisibleCount(prev => prev + ITEMS_PER_PAGE);
   };
 
+  // --- Resizing Logic ---
+  const [panelWidth, setPanelWidth] = useState(300); // Default width 300px
+  const [isDragging, setIsDragging] = useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      // The panel is on the left, so the width is simply the mouse's X coordinate.
+      // We clamp it between a minimum of 200px and a maximum of 800px.
+      const newWidth = Math.max(200, Math.min(800, e.clientX));
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+      }
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      // Change body cursor when dragging to indicate the action is happening anywhere
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging]);
+
   return (
-    <aside className="hierarchy-panel">
+    <aside className="hierarchy-panel" style={{ width: panelWidth }}>
+      {/* Resizer Handle */}
+      <div 
+        className="hierarchy-panel__resizer"
+        onMouseDown={startResizing}
+      />
+
       <div className="hierarchy-panel__header">
         <span className="hierarchy-panel__title">Hierarchy ({searchableNodes.length})</span>
       </div>
