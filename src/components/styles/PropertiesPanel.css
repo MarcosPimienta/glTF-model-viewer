@@ -129,13 +129,40 @@
 /* ---------------------------------------------------------------------------
    XYZ triplet row (position / rotation / scale)
    --------------------------------------------------------------------------- */
+.properties-panel__field--column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
 .properties-panel__xyz {
   display: flex;
   gap: 4px;
 }
 
+.properties-panel__xyz-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.properties-panel__axis {
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.properties-panel__axis--x { color: #e05c5c; }
+.properties-panel__axis--y { color: #5cb85c; }
+.properties-panel__axis--z { color: #5c8ee0; }
+
 .properties-panel__xyz .properties-panel__input {
   min-width: 0;
+  text-align: center;
+  padding: 0 2px;
 }
 
 /* ---------------------------------------------------------------------------

@@ -1,110 +1,206 @@
-import { useState, useEffect } from "react";
-import type { Scene, Node } from "@babylonjs/core";
+import { useState, useEffect, useCallback } from "react";
+import type { Scene, AbstractMesh, Node } from "@babylonjs/core";
 // @ts-ignore - web-ifc-babylon has incomplete types
 import type { IFCModel } from "web-ifc-babylon";
 import "./styles/PropertiesPanel.css";
 
-interface PropertiesPanelProps {
-  scene: Scene | null;
-  selectedNodeId: string | number | null;
+// ─── Helper ──────────────────────────────────────────────────────────────────
+
+const RAD_TO_DEG = 180 / Math.PI;
+const DEG_TO_RAD = Math.PI / 180;
+
+function fmt(n: number): string {
+  return parseFloat(n.toFixed(4)).toString();
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
 }
 
 interface NodeProperties {
   name: string;
   id: string | number;
   type: string;
+  isMesh: boolean;   // only meshes have a modifiable transform
 }
 
-export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPanelProps) {
-  const [nodeData, setNodeData] = useState<NodeProperties | null>(null);
+interface TransformState {
+  position: Vec3;
+  rotation: Vec3;  // stored in DEGREES for display
+  scale: Vec3;
+}
 
+interface PropertiesPanelProps {
+  scene: Scene | null;
+  selectedNodeId: string | number | null;
+}
+
+// ─── Sub-component: XYZ row ───────────────────────────────────────────────────
+
+interface XyzRowProps {
+  label: string;
+  value: Vec3;
+  step?: number;
+  onChange: (axis: "x" | "y" | "z", value: number) => void;
+}
+
+function XyzRow({ label, value, step = 0.01, onChange }: XyzRowProps) {
+  return (
+    <div className="properties-panel__field properties-panel__field--column">
+      <span className="properties-panel__label">{label}</span>
+      <div className="properties-panel__xyz">
+        <div className="properties-panel__xyz-field">
+          <span className="properties-panel__axis properties-panel__axis--x">X</span>
+          <input
+            className="properties-panel__input"
+            type="number"
+            step={step}
+            value={fmt(value.x)}
+            onChange={e => onChange("x", parseFloat(e.target.value) || 0)}
+          />
+        </div>
+        <div className="properties-panel__xyz-field">
+          <span className="properties-panel__axis properties-panel__axis--y">Y</span>
+          <input
+            className="properties-panel__input"
+            type="number"
+            step={step}
+            value={fmt(value.y)}
+            onChange={e => onChange("y", parseFloat(e.target.value) || 0)}
+          />
+        </div>
+        <div className="properties-panel__xyz-field">
+          <span className="properties-panel__axis properties-panel__axis--z">Z</span>
+          <input
+            className="properties-panel__input"
+            type="number"
+            step={step}
+            value={fmt(value.z)}
+            onChange={e => onChange("z", parseFloat(e.target.value) || 0)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Helper: resolve node from scene ─────────────────────────────────────────
+
+function resolveNode(scene: Scene, selectedNodeId: string | number): Node | null {
+  let node: Node | null = null;
+  if (typeof selectedNodeId === "number") {
+    node = scene.getNodeById(selectedNodeId.toString());
+    if (!node) {
+      const mesh = scene.getMeshByUniqueId(selectedNodeId);
+      if (mesh) node = mesh;
+    }
+  }
+  if (!node) node = scene.getNodeByID(selectedNodeId.toString());
+  if (!node && typeof selectedNodeId === "string") node = scene.getNodeByName(selectedNodeId);
+  return node;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPanelProps) {
+  const [nodeData, setNodeData]       = useState<NodeProperties | null>(null);
+  const [transform, setTransform]     = useState<TransformState | null>(null);
+
+  // ── Effect: resolve node and read its current transform ──────────────────
   useEffect(() => {
     if (!scene || selectedNodeId === null) {
       setNodeData(null);
+      setTransform(null);
       return;
     }
 
-    // 1. Check if we have an IFC model in the scene
+    // Check if we have an IFC model
     const ifcModelMesh = scene.meshes.find(m => (m as any).ifcManager) as any;
     const ifcModel = ifcModelMesh as IFCModel | undefined;
-
-    // 2. Are we looking for an IFC node? Support string IDs for logic separation, but IFC usually uses numbers
     const isIfcNode = ifcModel && typeof selectedNodeId === "number";
 
     if (isIfcNode) {
-      // It's an IFC node! We need to query its info from the IFC Manager
-      try {
-        // We get properties asynchronously (some models might take a moment if large, but usually fast enough)
-        // For simplicity in this synchronous effect, we'll fetch the basic spatial node structure
-        // we already know about. A more advanced implementaton would use ifcManager.getItemProperties
-        
-        // For Phase 7, we'll try to find its type from the items properties if loaded
-        ifcModel.ifcManager.getItemProperties(ifcModel.modelID, selectedNodeId as number)
-          .then((props: any) => {
-            if (props) {
-               setNodeData({
-                name: props.Name?.value || `IFC Node ${selectedNodeId}`,
-                id: selectedNodeId,
-                type: props.type || "IFC Element" // web-ifc often exposes .type string or number
-              });
-            } else {
-               // Fallback if properties not available yet
-               setNodeData({
-                  name: `IFC Node`,
-                  id: selectedNodeId,
-                  type: "IFC Element"
-               });
-            }
-          })
-          .catch((err: any) => {
-            console.error("Failed to get IFC properties", err);
-            setNodeData({
-              name: `IFC Element`,
-              id: selectedNodeId,
-              type: "IFC Element"
-            });
+      ifcModel.ifcManager
+        .getItemProperties(ifcModel.modelID, selectedNodeId as number)
+        .then((props: any) => {
+          setNodeData({
+            name: props?.Name?.value || `IFC Node ${selectedNodeId}`,
+            id: selectedNodeId,
+            type: props?.type || "IFC Element",
+            isMesh: false,
           });
-      } catch (e) {
-          setNodeData(null);
-      }
-
-    } else {
-      // It's a standard Babylon Node
-      // `selectedNodeId` from viewer clicks is often a mesh uniqueId
-      // First try finding by uniqueId (number)
-      let foundNode: Node | null = null;
-      
-      if (typeof selectedNodeId === "number") {
-         foundNode = scene.getNodeById(selectedNodeId.toString());
-         if (!foundNode) {
-            // Some meshes might only have uniqueId, not id matching it
-            const mesh = scene.getMeshByUniqueId(selectedNodeId);
-            if (mesh) foundNode = mesh;
-         }
-      }
-      
-      // Fallback: try finding by ID string (often used in glTF parsing)
-      if (!foundNode) {
-        foundNode = scene.getNodeByID(selectedNodeId.toString());
-      }
-      
-      // Final Fallback: try finding by Name (just in case)
-      if (!foundNode && typeof selectedNodeId === "string") {
-        foundNode = scene.getNodeByName(selectedNodeId);
-      }
-
-      if (foundNode) {
-        setNodeData({
-          name: foundNode.name,
-          id: foundNode.id || foundNode.uniqueId,
-          type: foundNode.getClassName()
+          // IFC nodes don't have a standard Babylon transform we can trivially edit
+          setTransform(null);
+        })
+        .catch(() => {
+          setNodeData({ name: "IFC Element", id: selectedNodeId, type: "IFC Element", isMesh: false });
+          setTransform(null);
         });
-      } else {
-        setNodeData(null);
-      }
+      return;
     }
-    
+
+    // Standard Babylon node
+    const node = resolveNode(scene, selectedNodeId);
+    if (!node) {
+      setNodeData(null);
+      setTransform(null);
+      return;
+    }
+
+    setNodeData({
+      name: node.name,
+      id: node.id || node.uniqueId,
+      type: node.getClassName(),
+      isMesh: node.getClassName() === "Mesh" || node.getClassName() === "TransformNode",
+    });
+
+    // Read transform from node (cast to AbstractMesh for position/rotation/scaling)
+    const m = node as AbstractMesh;
+    if (m.position && m.rotation && m.scaling) {
+      setTransform({
+        position: { x: m.position.x, y: m.position.y, z: m.position.z },
+        rotation: {
+          x: m.rotation.x * RAD_TO_DEG,
+          y: m.rotation.y * RAD_TO_DEG,
+          z: m.rotation.z * RAD_TO_DEG,
+        },
+        scale: { x: m.scaling.x, y: m.scaling.y, z: m.scaling.z },
+      });
+    } else {
+      setTransform(null);
+    }
   }, [scene, selectedNodeId]);
+
+  // ── Handlers: write input changes back to the live 3D mesh ───────────────
+  const handlePosition = useCallback((axis: "x" | "y" | "z", val: number) => {
+    if (!scene || selectedNodeId === null) return;
+    const node = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!node?.position) return;
+    node.position[axis] = val;
+    setTransform(prev => prev ? { ...prev, position: { ...prev.position, [axis]: val } } : null);
+  }, [scene, selectedNodeId]);
+
+  const handleRotation = useCallback((axis: "x" | "y" | "z", val: number) => {
+    if (!scene || selectedNodeId === null) return;
+    const node = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!node?.rotation) return;
+    node.rotation[axis] = val * DEG_TO_RAD;
+    setTransform(prev => prev ? { ...prev, rotation: { ...prev.rotation, [axis]: val } } : null);
+  }, [scene, selectedNodeId]);
+
+  const handleScale = useCallback((axis: "x" | "y" | "z", val: number) => {
+    if (!scene || selectedNodeId === null) return;
+    const node = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!node?.scaling) return;
+    node.scaling[axis] = val;
+    setTransform(prev => prev ? { ...prev, scale: { ...prev.scale, [axis]: val } } : null);
+  }, [scene, selectedNodeId]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <aside className="properties-panel">
       {/* Panel header */}
@@ -115,94 +211,52 @@ export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPan
       {/* Scrollable body */}
       <div className="properties-panel__body">
         {!nodeData ? (
-          /* Empty state — shown when nothing is selected */
+          /* Empty state */
           <p className="properties-panel__empty">Nothing selected</p>
         ) : (
-          /* Basic Info section — rendered when a mesh is selected */
-          <div className="properties-panel__section properties-panel__basic-info">
-            <div className="properties-panel__section-title">General</div>
-            
-            <div className="properties-panel__field">
-              <span className="properties-panel__label">Name</span>
-              <span className="properties-panel__value" title={nodeData.name}>
-                {nodeData.name}
-              </span>
+          <>
+            {/* ── General Info ─────────────────────────────────────── */}
+            <div className="properties-panel__section">
+              <div className="properties-panel__section-title">General</div>
+
+              <div className="properties-panel__field">
+                <span className="properties-panel__label">Name</span>
+                <span className="properties-panel__value" title={nodeData.name}>
+                  {nodeData.name}
+                </span>
+              </div>
+
+              <div className="properties-panel__field">
+                <span className="properties-panel__label">ID</span>
+                <span className="properties-panel__value" title={nodeData.id.toString()}>
+                  {nodeData.id}
+                </span>
+              </div>
+
+              <div className="properties-panel__field">
+                <span className="properties-panel__label">Type</span>
+                <span className="properties-panel__value">{nodeData.type}</span>
+              </div>
             </div>
 
-            <div className="properties-panel__field">
-              <span className="properties-panel__label">ID</span>
-              <span className="properties-panel__value" title={nodeData.id.toString()}>
-                {nodeData.id}
-              </span>
-            </div>
+            {/* ── Transform ────────────────────────────────────────── */}
+            {transform && (
+              <div className="properties-panel__section">
+                <div className="properties-panel__section-title">Transform</div>
 
-            <div className="properties-panel__field">
-              <span className="properties-panel__label">Type</span>
-              <span className="properties-panel__value">
-                {nodeData.type}
-              </span>
+                <XyzRow label="Position" value={transform.position} step={0.1} onChange={handlePosition} />
+                <XyzRow label="Rotation" value={transform.rotation} step={1}   onChange={handleRotation} />
+                <XyzRow label="Scale"    value={transform.scale}    step={0.01} onChange={handleScale}   />
+              </div>
+            )}
+
+            {/* Material section — Phase 9
+            <div className="properties-panel__section">
+              ...
             </div>
-          </div>
+            */}
+          </>
         )}
-
-        {/* Transform section — rendered when a mesh is selected (Phase 8)
-        <div className="properties-panel__section">
-          <div className="properties-panel__section-title">Transform</div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Position</span>
-            <div className="properties-panel__xyz">
-              <input className="properties-panel__input" type="number" defaultValue={0} />
-              <input className="properties-panel__input" type="number" defaultValue={0} />
-              <input className="properties-panel__input" type="number" defaultValue={0} />
-            </div>
-          </div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Rotation</span>
-            <div className="properties-panel__xyz">
-              <input className="properties-panel__input" type="number" defaultValue={0} />
-              <input className="properties-panel__input" type="number" defaultValue={0} />
-              <input className="properties-panel__input" type="number" defaultValue={0} />
-            </div>
-          </div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Scale</span>
-            <div className="properties-panel__xyz">
-              <input className="properties-panel__input" type="number" defaultValue={1} />
-              <input className="properties-panel__input" type="number" defaultValue={1} />
-              <input className="properties-panel__input" type="number" defaultValue={1} />
-            </div>
-          </div>
-        </div>
-        */}
-
-        {/* Material section — rendered when selected mesh has a PBR material (Phase 9)
-        <div className="properties-panel__section">
-          <div className="properties-panel__section-title">Material</div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Color</span>
-            <input className="properties-panel__color" type="color" defaultValue="#ffffff" />
-          </div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Opacity</span>
-            <input className="properties-panel__slider" type="range" min={0} max={1} step={0.01} defaultValue={1} />
-          </div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Metallic</span>
-            <input className="properties-panel__slider" type="range" min={0} max={1} step={0.01} defaultValue={0} />
-          </div>
-
-          <div className="properties-panel__field">
-            <span className="properties-panel__label">Roughness</span>
-            <input className="properties-panel__slider" type="range" min={0} max={1} step={0.01} defaultValue={0.5} />
-          </div>
-        </div>
-        */}
       </div>
     </aside>
   );
