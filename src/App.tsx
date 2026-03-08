@@ -32,7 +32,7 @@ export default function App() {
 
   // Initialize our model loader hook at the app level too, 
   // so the toolbar can use the same loader logic as the Viewer
-  const { loadModel } = useModelLoader(scene);
+  const { loadModel, loadingState } = useModelLoader(scene);
 
   // useCallback keeps this function stable across re-renders,
   // so Viewer doesn't fire onSceneReady on every render.
@@ -54,7 +54,7 @@ export default function App() {
 
       {/* Main content row — fills all remaining vertical space */}
       <div className="app__content">
-        <HierarchyPanel />
+        <HierarchyPanel scene={scene} isLoading={loadingState.isLoading} />
         {/* Viewer also handles its own drag-and-drop loading */}
         {/* We pass handleLoadFile so dropping in the viewer also updates the App filename state */}
         <Viewer onSceneReady={handleSceneReady} onFileDrop={handleLoadFile} />
