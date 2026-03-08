@@ -5,6 +5,8 @@ import "./styles/HierarchyPanel.css";
 interface HierarchyPanelProps {
   scene: Scene | null;
   isLoading: boolean;
+  selectedNodeId?: string | number | null;
+  onSelectNode?: (id: string | number | null) => void;
 }
 
 // The new data structure that powers the Virtual Tree
@@ -21,7 +23,12 @@ interface TreeNode {
 
 const ITEMS_PER_PAGE = 100;
 
-export default function HierarchyPanel({ scene, isLoading }: HierarchyPanelProps) {
+export default function HierarchyPanel({ 
+  scene, 
+  isLoading,
+  selectedNodeId,
+  onSelectNode 
+}: HierarchyPanelProps) {
   // Store the massive flat array that behaves like a tree
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
   
@@ -186,6 +193,72 @@ export default function HierarchyPanel({ scene, isLoading }: HierarchyPanelProps
     });
   };
 
+  // Phase 6 Bonus: Auto-expand and scroll to node when selected from the 3D Scene
+  useEffect(() => {
+    // If no node is selected, or we haven't built the tree yet, do nothing
+    if (selectedNodeId === null || treeNodes.length === 0) return;
+
+    // Find the selected node
+    const targetIndex = treeNodes.findIndex(item => item.id == selectedNodeId);
+    if (targetIndex === -1) return;
+
+    const targetNode = treeNodes[targetIndex];
+
+    // 1. Expand all parents if it is currently hidden
+    if (!targetNode.isVisible) {
+      setTreeNodes(prevTree => {
+        const nextTree = [...prevTree];
+        let currentDepth = nextTree[targetIndex].depth;
+        
+        // Walk backwards through the flat list
+        for (let i = targetIndex - 1; i >= 0; i--) {
+          const node = nextTree[i];
+          
+          if (node.depth === currentDepth - 1) {
+            nextTree[i] = { ...node, isExpanded: true };
+            
+            for (let j = i + 1; j < nextTree.length; j++) {
+              if (nextTree[j].depth <= node.depth) break; 
+              if (nextTree[j].depth === node.depth + 1) {
+                nextTree[j] = { ...nextTree[j], isVisible: true };
+              }
+            }
+            
+            currentDepth = node.depth;
+            if (currentDepth === 0) break;
+          }
+        }
+        return nextTree;
+      });
+    }
+
+    // 2. Ensure pagination is large enough to show this item
+    // We need to count how many *visible* items come before our target
+    // We do this by looking at the current tree (or assuming it will be visible)
+    requestAnimationFrame(() => {
+        // Because setTreeNodes is async, we do this count in the next frame just to be safe,
+        // but typically the visible count just needs to be large enough to hold the absolute index.
+        const visibleItemsBeforeTarget = treeNodes.slice(0, targetIndex + 1).filter(n => n.isVisible || n.id == selectedNodeId).length;
+        
+        if (visibleItemsBeforeTarget > visibleCount) {
+             // Let's add enough pages to show the item, plus a little buffer
+             const pagesNeeded = Math.ceil(visibleItemsBeforeTarget / ITEMS_PER_PAGE);
+             setVisibleCount(pagesNeeded * ITEMS_PER_PAGE);
+        }
+    });
+
+    // 3. Scroll the item into view
+    // We use a small timeout to let React finish rendering the new expanded rows/pagination
+    setTimeout(() => {
+        const elementId = `tree-node-${selectedNodeId}`;
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
+
+  }, [selectedNodeId, treeNodes.length]);
+
   // 1. Filter out the hidden nodes (so it behaves like a tree)
   const onlyVisibleNodes = useMemo(() => {
     return treeNodes.filter(item => item.isVisible);
@@ -289,19 +362,30 @@ export default function HierarchyPanel({ scene, isLoading }: HierarchyPanelProps
             {finallyVisibleNodes.map((item) => (
               <div 
                 key={item.id} 
-                className="hierarchy-panel__node" 
-                onClick={() => toggleNode(item.id)}
+                id={`tree-node-${item.id}`}
+                className={`hierarchy-panel__node ${item.id === selectedNodeId ? 'hierarchy-panel__node--selected' : ''}`}
+                onClick={() => {
+                  if (onSelectNode) {
+                    onSelectNode(item.id);
+                  }
+                }}
                 // THIS is the magic! Fake the tree padding based on depth!
                 // But if we are searching, flatten it out so it's easier to read.
                 style={{ 
                   paddingLeft: searchQuery ? "8px" : `${item.depth * 16 + 8}px`,
-                  cursor: item.hasChildren ? "pointer" : "default" 
                 }}
               >
                 {/* Expand / Collapse Caret */}
                 {/* Hide the caret completely if we are filtering via search */}
                 {!searchQuery && (
-                  <span className={`hierarchy-panel__caret ${item.hasChildren ? "" : "hierarchy-panel__caret--leaf"}`}>
+                  <span 
+                    className={`hierarchy-panel__caret ${item.hasChildren ? "" : "hierarchy-panel__caret--leaf"}`}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Don't trigger selection when just toggling the folder
+                      toggleNode(item.id);
+                    }}
+                    style={{ cursor: item.hasChildren ? "pointer" : "default" }}
+                  >
                     {item.hasChildren ? (item.isExpanded ? "▼" : "▶") : ""}
                   </span>
                 )}

@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import type { Scene } from "@babylonjs/core";
+import { Scene, PointerEventTypes, HighlightLayer, Color3, AbstractMesh } from "@babylonjs/core";
 import { useBabylonEngine } from "../hooks/useBabylonEngine";
 import { useModelLoader } from "../hooks/useModelLoader";
 import "./styles/Viewer.css";
@@ -20,9 +20,18 @@ interface ViewerProps {
    * Allows App.tsx to track the filename.
    */
   onFileDrop?: (file: File) => void;
+
+  // Phase 6: Selection Props
+  selectedNodeId?: string | number | null;
+  onSelectNode?: (id: string | number | null) => void;
 }
 
-export default function Viewer({ onSceneReady, onFileDrop }: ViewerProps) {
+export default function Viewer({ 
+  onSceneReady, 
+  onFileDrop,
+  selectedNodeId,
+  onSelectNode
+}: ViewerProps) {
   // canvasRef is our direct line to the <canvas> DOM element.
   // Think of it as a sticky note with the canvas's address written on it.
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,13 +43,88 @@ export default function Viewer({ onSceneReady, onFileDrop }: ViewerProps) {
   // Initialize our model loader hook
   const { loadModel, loadingState } = useModelLoader(scene);
 
+  // Reference to the highlight layer so we can add/remove meshes from it
+  const highlightLayerRef = useRef<HighlightLayer | null>(null);
+
   // When the scene first becomes available, notify the parent (App.tsx).
   // useEffect only fires when `scene` changes (null → Scene object).
   useEffect(() => {
-    if (scene && onSceneReady) {
+    if (!scene) return;
+
+    if (onSceneReady) {
       onSceneReady(scene);
     }
-  }, [scene, onSceneReady]);
+
+    // Phase 6: Create the Highlight layer for selected objects
+    highlightLayerRef.current = new HighlightLayer("hl1", scene);
+
+    // Phase 6b: Listen for clicks on 3D meshes
+    const pointerObserver = scene.onPointerObservable.add((pointerInfo) => {
+      if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
+        // Did we click on a mesh?
+        if (pointerInfo.pickInfo?.hit && pointerInfo.pickInfo.pickedMesh) {
+          const pickedMesh = pointerInfo.pickInfo.pickedMesh;
+          
+          let idToSelect: string | number = pickedMesh.uniqueId;
+          const isIfcScene = scene.meshes.some((m: any) => m.ifcManager);
+
+          // Is it an IFC mesh? If so, its name IS its expressID.
+          // Otherwise, fallback to the Babylon uniqueId.
+          if (isIfcScene && !isNaN(Number(pickedMesh.name)) && pickedMesh.name.trim() !== "") {
+            idToSelect = Number(pickedMesh.name);
+          } else {
+            idToSelect = pickedMesh.uniqueId;
+          }
+          
+          if (onSelectNode) {
+            onSelectNode(idToSelect);
+          }
+        } else {
+          // If we clicked empty space, deselect
+          if (onSelectNode) {
+             onSelectNode(null);
+          }
+        }
+      }
+    });
+
+    return () => {
+      scene.onPointerObservable.remove(pointerObserver);
+      if (highlightLayerRef.current) {
+        highlightLayerRef.current.dispose();
+      }
+    };
+  }, [scene, onSceneReady, onSelectNode]);
+
+  // Phase 6c: Apply visual highlight when selectedNodeId changes
+  useEffect(() => {
+    if (!scene || !highlightLayerRef.current) return;
+
+    const hl = highlightLayerRef.current;
+    
+    // Clear all existing highlights first
+    hl.removeAllMeshes();
+
+    if (selectedNodeId !== null) {
+      // Find the mesh that matches the selected ID
+      // If it's a number, it's likely an IFC expressID (which is stored as the mesh Name)
+      // or it's a generic uniqueId.
+      let targetMesh: AbstractMesh | undefined;
+      
+      if (typeof selectedNodeId === 'number') {
+        // Try precise match for IFC
+         targetMesh = scene.meshes.find(m => m.name === selectedNodeId.toString() || m.uniqueId === selectedNodeId);
+      } else {
+         targetMesh = scene.meshes.find(m => m.uniqueId === Number(selectedNodeId) || m.name === selectedNodeId);
+      }
+
+      if (targetMesh) {
+        // Add a nice blue highlight!
+        hl.addMesh(targetMesh as any, Color3.FromHexString("#4A9EFF"));
+      }
+    }
+
+  }, [scene, selectedNodeId]);
 
   // Drag and drop event handlers
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {

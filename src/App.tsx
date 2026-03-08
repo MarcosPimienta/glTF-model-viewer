@@ -30,6 +30,10 @@ export default function App() {
   // Tiny memory (state) to remember the name of the file we loaded
   const [activeModelName, setActiveModelName] = useState<string | null>(null);
 
+  // Central state for Two-Way Selection (Phase 6)
+  // This stores the ID of the currently selected part (either Babylon uniqueId or IFC expressID)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | number | null>(null);
+
   // Initialize our model loader hook at the app level too, 
   // so the toolbar can use the same loader logic as the Viewer
   const { loadModel, loadingState } = useModelLoader(scene);
@@ -44,6 +48,8 @@ export default function App() {
   // We wrap it to also save the filename when a load starts
   const handleLoadFile = useCallback((file: File) => {
     setActiveModelName(file.name);
+    // Reset selection when loading a new file
+    setSelectedNodeId(null);
     loadModel(file);
   }, [loadModel]);
 
@@ -54,10 +60,20 @@ export default function App() {
 
       {/* Main content row — fills all remaining vertical space */}
       <div className="app__content">
-        <HierarchyPanel scene={scene} isLoading={loadingState.isLoading} />
+        <HierarchyPanel 
+          scene={scene} 
+          isLoading={loadingState.isLoading} 
+          selectedNodeId={selectedNodeId}
+          onSelectNode={setSelectedNodeId}
+        />
         {/* Viewer also handles its own drag-and-drop loading */}
         {/* We pass handleLoadFile so dropping in the viewer also updates the App filename state */}
-        <Viewer onSceneReady={handleSceneReady} onFileDrop={handleLoadFile} />
+        <Viewer 
+          onSceneReady={handleSceneReady} 
+          onFileDrop={handleLoadFile}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={setSelectedNodeId}
+        />
         <PropertiesPanel />
       </div>
 
