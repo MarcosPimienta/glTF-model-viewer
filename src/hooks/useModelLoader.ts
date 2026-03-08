@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Scene, SceneLoader } from "@babylonjs/core";
 import "@babylonjs/loaders"; // registers GLTF/GLB loaders
 
 // We need to import the IFC loader plugin side-effect
-// Note: In Babylon 7, the IFC loader relies on web-ifc being available.
+// The IFC loader relies on web-ifc being available.
 import "web-ifc-babylon/loaders/IFC";
 
 // Re-use our LoadingState interface
@@ -16,6 +16,16 @@ export function useModelLoader(scene: Scene | null) {
     progress: 0,
     fileName: null,
   });
+
+  // Initialize IFC WASM path once when the hook is first used
+  useEffect(() => {
+    // SceneLoader has a getPluginForExtension method we can use to configure the IFC loader
+    const ifcPlugin = SceneLoader.GetPluginForExtension(".ifc") as any;
+    if (ifcPlugin && ifcPlugin._ifcManager) {
+      // The WASM files are copied to the public directory by our Vite plugin
+      ifcPlugin._ifcManager.setWasmPath("/");
+    }
+  }, []);
 
   const loadModel = useCallback(
     async (file: File) => {
