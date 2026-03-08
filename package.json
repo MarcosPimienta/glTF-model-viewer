@@ -11,10 +11,12 @@
   "dependencies": {
     "@babylonjs/core": "^7.0.0",
     "@babylonjs/loaders": "^7.0.0",
-    "@babylonjs/serializers": "^7.0.0",
     "@babylonjs/materials": "^7.0.0",
+    "@babylonjs/serializers": "^7.0.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "web-ifc": "^0.0.77",
+    "web-ifc-babylon": "^0.2.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
