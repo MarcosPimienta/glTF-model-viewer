@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Engine, Scene } from "@babylonjs/core";
+import { Engine, Scene, ArcRotateCamera, Vector3, Color4, Color3 } from "@babylonjs/core";
 
 /**
  * useBabylonEngine
@@ -43,6 +43,42 @@ export function useBabylonEngine(
     // The Scene is the container for everything: meshes, lights, cameras.
     // Think of it as the 3D world itself.
     const newScene = new Scene(engine);
+    
+    // Clear color to a nice dark grey
+    newScene.clearColor = new Color4(0.12, 0.12, 0.12, 1);
+
+    // ── Step 2a: Add a Camera ────────────────────────────────────────────────
+    // ArcRotateCamera is a "turntable" camera. It orbits around a specific
+    // target point.
+    // Parameters: name, alpha (rotation around Y), beta (up/down angle), radius (distance), target, scene
+    const camera = new ArcRotateCamera(
+      "MainCamera",
+      Math.PI / 4, // 45 degrees
+      Math.PI / 3, // slightly looking down
+      10, // distance from center
+      Vector3.Zero(), // looking at center of the world (0,0,0)
+      newScene
+    );
+    
+    // Attach the camera to the canvas so mouse/touch events move it
+    camera.attachControl(canvas, true);
+    
+    // Limits — don't let the user zoom in too close or go under the floor
+    camera.minZ = 0.1;
+    camera.wheelPrecision = 50; // makes scroll wheel zooming smoother
+
+    // ── Step 2b: Add Environment Lighting ────────────────────────────────────
+    // A 3D model looks flat and ugly without lights. The easiest way to get
+    // realistic PBR (Physically Based Rendering) lighting is a default environment.
+    newScene.createDefaultEnvironment({
+      createSkybox: true,
+      skyboxSize: 1000,
+      skyboxColor: new Color3(0.15, 0.15, 0.15),
+      createGround: true,
+      groundSize: 1000,
+      groundColor: new Color3(0.2, 0.2, 0.2),
+      enableGroundShadow: true,
+    });
 
     // Store the scene in state so other components can use it
     setScene(newScene);
