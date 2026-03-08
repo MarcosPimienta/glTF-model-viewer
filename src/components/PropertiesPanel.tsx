@@ -1,16 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Color3, PBRMaterial, PBRMetallicRoughnessMaterial } from "@babylonjs/core";
 import type { Scene, AbstractMesh, Node } from "@babylonjs/core";
 // @ts-ignore - web-ifc-babylon has incomplete types
 import type { IFCModel } from "web-ifc-babylon";
 import "./styles/PropertiesPanel.css";
 
-// ─── Helper ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const RAD_TO_DEG = 180 / Math.PI;
 const DEG_TO_RAD = Math.PI / 180;
 
 function fmt(n: number): string {
   return parseFloat(n.toFixed(4)).toString();
+}
+
+function color3ToHex(c: Color3): string {
+  const r = Math.round(c.r * 255).toString(16).padStart(2, "0");
+  const g = Math.round(c.g * 255).toString(16).padStart(2, "0");
+  const b = Math.round(c.b * 255).toString(16).padStart(2, "0");
+  return `#${r}${g}${b}`;
+}
+
+function hexToColor3(hex: string): Color3 {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return new Color3(r, g, b);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +47,13 @@ interface TransformState {
   position: Vec3;
   rotation: Vec3;  // stored in DEGREES for display
   scale: Vec3;
+}
+
+interface MaterialState {
+  albedo:    string;  // CSS hex e.g. "#ffffff"
+  opacity:   number;  // 0–1
+  metallic:  number;  // 0–1
+  roughness: number;  // 0–1
 }
 
 interface PropertiesPanelProps {
@@ -109,12 +131,16 @@ function resolveNode(scene: Scene, selectedNodeId: string | number): Node | null
 export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPanelProps) {
   const [nodeData, setNodeData]       = useState<NodeProperties | null>(null);
   const [transform, setTransform]     = useState<TransformState | null>(null);
+  const [material, setMaterial]       = useState<MaterialState | null>(null);
+  const materialClonedRef             = useRef<boolean>(false);
 
-  // ── Effect: resolve node and read its current transform ──────────────────
+  // ── Effect: resolve node and read its current transform + material ────────
   useEffect(() => {
     if (!scene || selectedNodeId === null) {
       setNodeData(null);
       setTransform(null);
+      setMaterial(null);
+      materialClonedRef.current = false;
       return;
     }
 
@@ -173,6 +199,29 @@ export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPan
     } else {
       setTransform(null);
     }
+
+    // Read PBR material
+    materialClonedRef.current = false;
+    const mat = m.material;
+    if (mat instanceof PBRMaterial) {
+      const albedoColor = mat.albedoColor ?? Color3.White();
+      setMaterial({
+        albedo:    color3ToHex(albedoColor),
+        opacity:   mat.alpha,
+        metallic:  mat.metallic  ?? 0,
+        roughness: mat.roughness ?? 1,
+      });
+    } else if (mat instanceof PBRMetallicRoughnessMaterial) {
+      const albedoColor = mat.baseColor ?? Color3.White();
+      setMaterial({
+        albedo:    color3ToHex(albedoColor),
+        opacity:   mat.alpha,
+        metallic:  mat.metallic  ?? 0,
+        roughness: mat.roughness ?? 1,
+      });
+    } else {
+      setMaterial(null);
+    }
   }, [scene, selectedNodeId]);
 
   // ── Handlers: write input changes back to the live 3D mesh ───────────────
@@ -198,6 +247,68 @@ export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPan
     if (!node?.scaling) return;
     node.scaling[axis] = val;
     setTransform(prev => prev ? { ...prev, scale: { ...prev.scale, [axis]: val } } : null);
+  }, [scene, selectedNodeId]);
+
+  // ── Helpers: clone-before-edit + get live PBR material ───────────────────
+  function getOrClonePbrMaterial(mesh: AbstractMesh): PBRMaterial | PBRMetallicRoughnessMaterial | null {
+    const mat = mesh.material;
+    if (!mat || (!(mat instanceof PBRMaterial) && !(mat instanceof PBRMetallicRoughnessMaterial))) return null;
+    if (!materialClonedRef.current) {
+      const cloned = mat.clone(mat.name + "_edited");
+      mesh.material = cloned;
+      materialClonedRef.current = true;
+      return cloned as PBRMaterial | PBRMetallicRoughnessMaterial;
+    }
+    return mat as PBRMaterial | PBRMetallicRoughnessMaterial;
+  }
+
+  // ── Material write-back handlers ─────────────────────────────────────────
+  const handleAlbedo = useCallback((hex: string) => {
+    if (!scene || selectedNodeId === null) return;
+    const mesh = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!mesh) return;
+    const mat = getOrClonePbrMaterial(mesh);
+    if (!mat) return;
+    const c = hexToColor3(hex);
+    if (mat instanceof PBRMaterial) mat.albedoColor = c;
+    else mat.baseColor = c;
+    setMaterial(prev => prev ? { ...prev, albedo: hex } : null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, selectedNodeId]);
+
+  const handleOpacity = useCallback((val: number) => {
+    if (!scene || selectedNodeId === null) return;
+    const mesh = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!mesh) return;
+    const mat = getOrClonePbrMaterial(mesh);
+    if (!mat) return;
+    mat.alpha = val;
+    setMaterial(prev => prev ? { ...prev, opacity: val } : null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, selectedNodeId]);
+
+  const handleMetallic = useCallback((val: number) => {
+    if (!scene || selectedNodeId === null) return;
+    const mesh = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!mesh) return;
+    const mat = getOrClonePbrMaterial(mesh);
+    if (!mat) return;
+    if (mat instanceof PBRMaterial) mat.metallic = val;
+    else mat.metallic = val;
+    setMaterial(prev => prev ? { ...prev, metallic: val } : null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, selectedNodeId]);
+
+  const handleRoughness = useCallback((val: number) => {
+    if (!scene || selectedNodeId === null) return;
+    const mesh = resolveNode(scene, selectedNodeId) as AbstractMesh | null;
+    if (!mesh) return;
+    const mat = getOrClonePbrMaterial(mesh);
+    if (!mat) return;
+    if (mat instanceof PBRMaterial) mat.roughness = val;
+    else mat.roughness = val;
+    setMaterial(prev => prev ? { ...prev, roughness: val } : null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene, selectedNodeId]);
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -250,11 +361,68 @@ export default function PropertiesPanel({ scene, selectedNodeId }: PropertiesPan
               </div>
             )}
 
-            {/* Material section — Phase 9
-            <div className="properties-panel__section">
-              ...
-            </div>
-            */}
+            {/* ── Material ─────────────────────────────────────────── */}
+            {material && (
+              <div className="properties-panel__section">
+                <div className="properties-panel__section-title">Material</div>
+
+                {/* Albedo Color */}
+                <div className="properties-panel__field">
+                  <span className="properties-panel__label">Albedo</span>
+                  <input
+                    type="color"
+                    className="properties-panel__color"
+                    value={material.albedo}
+                    onChange={e => handleAlbedo(e.target.value)}
+                  />
+                </div>
+
+                {/* Opacity */}
+                <div className="properties-panel__field properties-panel__field--column">
+                  <div className="properties-panel__slider-header">
+                    <span className="properties-panel__label">Opacity</span>
+                    <span className="properties-panel__slider-value">{material.opacity.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    className="properties-panel__slider"
+                    min={0} max={1} step={0.01}
+                    value={material.opacity}
+                    onChange={e => handleOpacity(parseFloat(e.target.value))}
+                  />
+                </div>
+
+                {/* Metallic */}
+                <div className="properties-panel__field properties-panel__field--column">
+                  <div className="properties-panel__slider-header">
+                    <span className="properties-panel__label">Metallic</span>
+                    <span className="properties-panel__slider-value">{material.metallic.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    className="properties-panel__slider"
+                    min={0} max={1} step={0.01}
+                    value={material.metallic}
+                    onChange={e => handleMetallic(parseFloat(e.target.value))}
+                  />
+                </div>
+
+                {/* Roughness */}
+                <div className="properties-panel__field properties-panel__field--column">
+                  <div className="properties-panel__slider-header">
+                    <span className="properties-panel__label">Roughness</span>
+                    <span className="properties-panel__slider-value">{material.roughness.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    className="properties-panel__slider"
+                    min={0} max={1} step={0.01}
+                    value={material.roughness}
+                    onChange={e => handleRoughness(parseFloat(e.target.value))}
+                  />
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

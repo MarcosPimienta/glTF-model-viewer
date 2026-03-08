@@ -195,6 +195,22 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Slider header (label + live numeric value side by side)
+   --------------------------------------------------------------------------- */
+.properties-panel__slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.properties-panel__slider-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------------------
    Color swatch (albedo picker)
    --------------------------------------------------------------------------- */
 .properties-panel__color {

@@ -8,6 +8,8 @@ import StatusBar from "./components/StatusBar";
 
 // We need the loader hook at the top level so Toolbar can trigger it
 import { useModelLoader } from "./hooks/useModelLoader";
+import { useOptimizations } from "./hooks/useOptimizations";
+import { loadDemoScene } from "./utils/demoScene";
 
 /*
   Layout (matches spec §4):
@@ -37,6 +39,8 @@ export default function App() {
   // Initialize our model loader hook at the app level too, 
   // so the toolbar can use the same loader logic as the Viewer
   const { loadModel, loadingState } = useModelLoader(scene);
+  const { optState, toggleOcclusion, toggleLOD, toggleInstancing, toggleMerging } =
+    useOptimizations(scene);
 
   // useCallback keeps this function stable across re-renders,
   // so Viewer doesn't fire onSceneReady on every render.
@@ -53,10 +57,27 @@ export default function App() {
     loadModel(file);
   }, [loadModel]);
 
+  const handleLoadDemoScene = useCallback(() => {
+    if (!scene) return;
+    setActiveModelName("demo_scene.glb");
+    setSelectedNodeId(null);
+    loadDemoScene(scene);
+  }, [scene]);
+
   return (
     <>
       {/* Top toolbar — fixed height */}
-      <Toolbar onLoadFile={handleLoadFile} />
+      <Toolbar
+        onLoadFile={handleLoadFile}
+        onLoadDemoScene={handleLoadDemoScene}
+        scene={scene}
+        activeModelName={activeModelName}
+        optState={optState}
+        onToggleOcclusion={toggleOcclusion}
+        onToggleLOD={toggleLOD}
+        onToggleInstancing={toggleInstancing}
+        onToggleMerging={toggleMerging}
+      />
 
       {/* Main content row — fills all remaining vertical space */}
       <div className="app__content">
